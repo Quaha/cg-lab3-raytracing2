@@ -21,9 +21,6 @@ const int DIFFUSE = 1;
 const int REFLECTION = 2;
 const int REFRACTION = 3;
 
-const int DIFFUSE_REFLECTION = 1;
-const int MIRROR_REFLECTION = 2;
-
 out vec4 frag_color;
 in vec3 frag_position;
 
@@ -42,7 +39,7 @@ struct Camera {
 	vec3 position;
 	vec3 view;
 	vec3 up;
-	vec3 side;
+	vec3 right;
 	vec2 scale;
 };
 
@@ -56,15 +53,16 @@ struct Light {
 };
 
 struct Material {
-	/*diffuse color */
+	// Diffuse color
 	vec3 color;
 
-	/*ambient, diffuse and specular coeffs*/
+	// Ambient, diffuse and specular coeffs
 	vec4 light_coeffs;
 
-	/* 0 - non-reflection, 1 - mirror */
+	// 0.0 - non-reflection, 1.0 - mirror
 	float reflection_coef;
 	float refraction_coef;
+	float refractive_index;
 
 	int material_type;
 };
@@ -75,12 +73,13 @@ struct Intersection {
 	vec3 normal;
 	vec3 color;
 
-	/* ambient, diffuse and specular coeffs*/
+	// ambient, diffuse and specular coeffs
 	vec4 light_coeffs;
 
-	/* 0 -non-reflection, 1 - mirror */
+	// 0.0 - non-reflection, 1.0 - mirror
 	float reflection_coef;
 	float refraction_coef;
+	float refractive_index;
 
 	int material_type;
 };
@@ -112,114 +111,56 @@ TracingRay popRay() {
 
 // --- End of Stack ---
 
-Triangle triangles[12];
-Sphere spheres[2];
-Light light;
-Material materials[2];
+const int COUNT_OF_TRIANGLES = 12;
+const Triangle triangles[COUNT_OF_TRIANGLES] = Triangle[COUNT_OF_TRIANGLES](
+    // front wall
+    Triangle(vec3(-5.0,-5.0, -5.0), vec3( 5.0,-5.0, -5.0), vec3(-5.0, 5.0, -5.0), 4),
+    Triangle(vec3( 5.0, 5.0, -5.0), vec3(-5.0, 5.0, -5.0), vec3( 5.0,-5.0, -5.0), 4),
+
+    // right wall
+    Triangle(vec3(5.0, 5.0, 5.0), vec3(5.0, 5.0, -5.0), vec3(5.0, -5.0, 5.0), 3),
+    Triangle(vec3(5.0, -5.0, -5.0), vec3(5.0, 5.0, -5.0), vec3(5.0, -5.0, 5.0), 3),
+
+    // back wall
+    Triangle(vec3(-5.0,-5.0, 5.0), vec3( 5.0,-5.0, 5.0), vec3(-5.0, 5.0, 5.0), 4),
+    Triangle(vec3( 5.0, 5.0, 5.0), vec3(-5.0, 5.0, 5.0), vec3( 5.0,-5.0, 5.0), 4),
+
+    // left wall
+    Triangle(vec3(-5.0,-5.0,-5.0), vec3(-5.0, 5.0, 5.0), vec3(-5.0, 5.0,-5.0), 4),
+    Triangle(vec3(-5.0,-5.0,-5.0), vec3(-5.0,-5.0, 5.0), vec3(-5.0, 5.0, 5.0), 4),
+
+    // top wall
+    Triangle(vec3(-5.0,5.0,-5.0), vec3(5.0, 5.0, -5.0), vec3(-5.0, 5.0,5.0), 4),
+    Triangle(vec3(5.0,5.0,5.0), vec3(5.0, 5.0, -5.0), vec3(-5.0, 5.0,5.0), 4),
+
+    // bottom wall
+    Triangle(vec3(-5.0,-5.0,-5.0), vec3(5.0, -5.0, -5.0), vec3(-5.0, -5.0,5.0), 4),
+    Triangle(vec3(5.0,-5.0,5.0), vec3(5.0,-5.0, -5.0), vec3(-5.0, -5.0,5.0), 4)
+);
+
+const int COUNT_OF_SPHERES = 3;
+Sphere spheres[COUNT_OF_SPHERES] = Sphere[](
+    Sphere(vec3(-1.0, -1.0, -2.0), 2.0, 0),
+    Sphere(vec3( 2.0,  1.0,  2.0), 1.0, 1),
+    Sphere(vec3( 3.0,  0.0,  0.0), 1.3, 2)
+);
+
+const int COUNT_OF_MATERIALS = 5;
+const Material materials[COUNT_OF_MATERIALS] = Material[COUNT_OF_MATERIALS](
+    Material(vec3(0.9, 0.1, 0.1), vec4(0.0, 0.9, 0.3, 512.0), 0.0, 0.0, 1.66, DIFFUSE),
+    Material(vec3(0.1, 0.9, 0.1), vec4(0.0, 0.9, 0.6, 350.0), 0.0, 0.9, 1.66, REFRACTION),
+    Material(vec3(0.1, 0.1, 0.9), vec4(0.2, 0.9, 0.1, 5.0),   0.0, 0.0, 1.66, DIFFUSE),
+    Material(vec3(0.1, 0.5, 0.4), vec4(0.2, 0.9, 0.6, 250.0), 0.6, 0.0, 1.66, REFLECTION),
+    Material(vec3(0.1, 0.5, 0.4), vec4(0.2, 0.9, 0.1, 5.0),   0.0, 0.0, 1.66, DIFFUSE)
+);
+
+Light light = Light(vec3(1.0, 2.0, -4.0));
 Camera camera;
 
 Ray generateRay(Camera camera) {
 	vec2 coords = frag_position.xy * camera.scale;
-	vec3 direction = camera.view + camera.side * coords.x + camera.up * coords.y;
+	vec3 direction = camera.view + camera.right * coords.x + camera.up * coords.y;
 	return Ray(camera.position, normalize(direction));
-}
-
-void initializeDefaultScene(out Triangle triangles[12], out Sphere spheres[2]) {
-	// TRIANGLES
-
-	// front wall
-	triangles[0].v1 = vec3(-5.0,-5.0, -5.0);
-	triangles[0].v2 = vec3( 5.0,-5.0, -5.0);
-	triangles[0].v3 = vec3(-5.0, 5.0, -5.0);
-	triangles[0].material_id = 0;
-	triangles[1].v1 = vec3( 5.0, 5.0, -5.0);
-	triangles[1].v2 = vec3(-5.0, 5.0, -5.0);
-	triangles[1].v3 = vec3( 5.0,-5.0, -5.0);
-	triangles[1].material_id = 0;
-
-	// right wall
-	triangles[2].v1 = vec3(5.0, 5.0, 5.0);
-	triangles[2].v2 = vec3(5.0, 5.0, -5.0);
-	triangles[2].v3 = vec3(5.0, -5.0, 5.0);
-	triangles[2].material_id = 0;
-	triangles[3].v1 = vec3(5.0, -5.0, -5.0);
-	triangles[3].v2 = vec3(5.0, 5.0, -5.0);
-	triangles[3].v3 = vec3(5.0, -5.0, 5.0);
-	triangles[3].material_id = 0;
-
-	// back wall
-	triangles[4].v1 = vec3(-5.0,-5.0, 5.0);
-	triangles[4].v2 = vec3( 5.0,-5.0, 5.0);
-	triangles[4].v3 = vec3(-5.0, 5.0, 5.0);
-	triangles[4].material_id = 1;
-	triangles[5].v1 = vec3( 5.0, 5.0, 5.0);
-	triangles[5].v2 = vec3(-5.0, 5.0, 5.0);
-	triangles[5].v3 = vec3( 5.0,-5.0, 5.0);
-	triangles[5].material_id = 1;
-
-	// left wall
-	triangles[6].v1 = vec3(-5.0,-5.0,-5.0);
-	triangles[6].v2 = vec3(-5.0, 5.0, 5.0);
-	triangles[6].v3 = vec3(-5.0, 5.0,-5.0);
-	triangles[6].material_id = 0;
-	triangles[7].v1 = vec3(-5.0,-5.0,-5.0);
-	triangles[7].v2 = vec3(-5.0,-5.0, 5.0);
-	triangles[7].v3 = vec3(-5.0, 5.0, 5.0);
-	triangles[7].material_id = 0;
-
-
-	// top wall
-	triangles[8].v1 = vec3(-5.0,5.0,-5.0);
-	triangles[8].v2 = vec3(5.0, 5.0, -5.0);
-	triangles[8].v3 = vec3(-5.0, 5.0,5.0);
-	triangles[8].material_id = 0;
-
-	triangles[9].v1 = vec3(5.0,5.0,5.0);
-	triangles[9].v2 = vec3(5.0, 5.0, -5.0);
-	triangles[9].v3 = vec3(-5.0, 5.0,5.0);
-	triangles[9].material_id = 0;
-
-
-	// bottom wall
-	triangles[10].v1 = vec3(-5.0,-5.0,-5.0);
-	triangles[10].v2 = vec3(5.0, -5.0, -5.0);
-	triangles[10].v3 = vec3(-5.0, -5.0,5.0);
-	triangles[10].material_id = 0;
-
-	triangles[11].v1 = vec3(5.0,-5.0,5.0);
-	triangles[11].v2 = vec3(5.0,-5.0, -5.0);
-	triangles[11].v3 = vec3(-5.0, -5.0,5.0);
-	triangles[11].material_id = 0;
-
-	// SPHERES
-	spheres[0].center = vec3(-1.0,-1.0,-2.0);
-	spheres[0].radius = 2.0;
-	spheres[0].material_id = 0;
-
-	spheres[1].center = vec3(2.0,1.0,2.0);
-	spheres[1].radius = 1.0;
-	spheres[1].material_id = 0;
-}
-
-void initializeDefaultLightMaterials(out Light light, out Material materials[2]) {
-	// LIGHT
-	light.position = vec3(1.0, 2.0, -4.0);
-
-	// MATERIALS
-	vec4 light_coefs1 = vec4(0.4, 0.9, 0.0, 512.0);
-	
-	materials[0].color = vec3(0.4, 0.3, 0.0);
-	materials[0].light_coeffs = vec4(light_coefs1);
-	materials[0].reflection_coef = 0.5;
-	materials[0].refraction_coef = 1.0;
-	materials[0].material_type = DIFFUSE;
-	
-	materials[1].color = vec3(0.1, 0.5, 0.4);
-	materials[1].light_coeffs = vec4(light_coefs1);
-	materials[1].reflection_coef = 0.5;
-	materials[1].refraction_coef = 1.0;
-	materials[1].material_type = DIFFUSE;
-
 }
 
 bool intersectSphere(Sphere sphere, Ray ray, float start, float final, out float intersect_dist ) {
@@ -293,52 +234,54 @@ bool intersectTriangle(Ray ray, vec3 v1, vec3 v2, vec3 v3, out float intersect_d
 }
 
 
-bool raytrace(Ray ray, Sphere spheres[2], Triangle triangles[12], Material materials[2], float start, float final, inout Intersection intersect) {
+bool raytrace(Ray ray, Sphere spheres[COUNT_OF_SPHERES], Triangle triangles[COUNT_OF_TRIANGLES], Material materials[COUNT_OF_MATERIALS], float start, float final, inout Intersection intersect) {
 
 	bool result = false;
-	float test = start;
+	float nearest_dist = start;
 
 	intersect.intersect_dist = final;
 
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < COUNT_OF_SPHERES; i++) {
 
 		Sphere sphere = spheres[i];
-		if (intersectSphere(sphere, ray, start, final, test ) && test < intersect.intersect_dist ) {
+		if (intersectSphere(sphere, ray, start, final, nearest_dist) && start < nearest_dist && nearest_dist < intersect.intersect_dist) {
 
-			intersect.intersect_dist = test;
-			intersect.point = ray.start + ray.direction * test;
-			intersect.normal = normalize (intersect.point - spheres[i].center);
+			intersect.intersect_dist = nearest_dist;
+			intersect.point = ray.start + ray.direction * nearest_dist;
+			intersect.normal = normalize(intersect.point - spheres[i].center);
 			if (dot(ray.direction, intersect.normal) > 0.0) {
 				intersect.normal = -intersect.normal;
 			}
 
-			intersect.color = materials[0].color;
-			intersect.light_coeffs = materials[0].light_coeffs;
-			intersect.reflection_coef = materials[0].reflection_coef;
-			intersect.refraction_coef = materials[0].refraction_coef;
-			intersect.material_type = materials[0].material_type;
+			intersect.color = materials[sphere.material_id].color;
+			intersect.light_coeffs = materials[sphere.material_id].light_coeffs;
+			intersect.reflection_coef = materials[sphere.material_id].reflection_coef;
+			intersect.refraction_coef = materials[sphere.material_id].refraction_coef;
+			intersect.refractive_index = materials[sphere.material_id].refractive_index;
+			intersect.material_type = materials[sphere.material_id].material_type;
 
 			result = true;
 		}
 	}
 
-	for (int i = 0; i < 12; i++) {
+	for (int i = 0; i < COUNT_OF_TRIANGLES; i++) {
 
 		Triangle triangle = triangles[i];
 
-		if (intersectTriangle(ray, triangle.v1, triangle.v2, triangle.v3, test) && test < intersect.intersect_dist) {
-			intersect.intersect_dist = test;
-			intersect.point = ray.start + ray.direction * test;
+		if (intersectTriangle(ray, triangle.v1, triangle.v2, triangle.v3, nearest_dist) && start < nearest_dist && nearest_dist < intersect.intersect_dist) {
+			intersect.intersect_dist = nearest_dist;
+			intersect.point = ray.start + ray.direction * nearest_dist;
 			intersect.normal = normalize(cross(triangle.v1 - triangle.v2, triangle.v3 - triangle.v2));
 			if (dot(ray.direction, intersect.normal) > 0.0) {
 				intersect.normal = -intersect.normal;
 			}
 
-			intersect.color = materials[1].color;
-			intersect.light_coeffs = materials[1].light_coeffs;
-			intersect.reflection_coef = materials[1].reflection_coef;
-			intersect.refraction_coef = materials[1].refraction_coef;
-			intersect.material_type = materials[1].material_type;
+			intersect.color = materials[triangle.material_id].color;
+			intersect.light_coeffs = materials[triangle.material_id].light_coeffs;
+			intersect.reflection_coef = materials[triangle.material_id].reflection_coef;
+			intersect.refraction_coef = materials[triangle.material_id].refraction_coef;
+			intersect.refractive_index = materials[triangle.material_id].refractive_index;
+			intersect.material_type = materials[triangle.material_id].material_type;
 
 			result = true;
 		}
@@ -347,12 +290,15 @@ bool raytrace(Ray ray, Sphere spheres[2], Triangle triangles[12], Material mater
 	return result;
 }
 
-vec3 Phong(Intersection intersect, Light currLight, float shadow) {
-	vec3 light = normalize(currLight.position - intersect.point );
-	float diffuse = max(dot(light, intersect.normal), 0.0);
+vec3 getPhongPart(Intersection intersect, Light curr_light, float shadow) {
+	vec3 light = normalize(curr_light.position - intersect.point);
 	vec3 view = normalize(camera.position - intersect.point);
-	vec3 reflected= reflect(-view, intersect.normal);
+
+	float diffuse = max(dot(light, intersect.normal), 0.0);
+
+	vec3 reflected = reflect(-view, intersect.normal);
 	float specular = pow(max(dot(reflected, light), 0.0), intersect.light_coeffs.w);
+
 	return intersect.light_coeffs.x * intersect.color + intersect.light_coeffs.y * diffuse * intersect.color * shadow + intersect.light_coeffs.z * specular;
 }
 
@@ -361,7 +307,7 @@ float processShadow(Light light, Intersection hit) {
     
     float light_distance = distance(light.position, hit.point);
 
-    Ray shadow_ray = Ray(hit.point + light_dir * 0.001, light_dir);
+    Ray shadow_ray = Ray(hit.point + light_dir * EPS, light_dir);
     
     Intersection shadow_hit;
     shadow_hit.intersect_dist = INF;
@@ -374,12 +320,8 @@ float processShadow(Light light, Intersection hit) {
 
 void main() {
 
-	initializeDefaultLightMaterials(light, materials);
-	initializeDefaultScene(triangles, spheres);
-
 	float start = 0.0;
 	float final = INF;
-
 
 	camera = Camera(camera_POS, camera_VIEW, camera_UP, camera_RIGHT, vec2(1.0));
 
@@ -417,24 +359,44 @@ void main() {
 		final = INF;
 
 		if (raytrace(ray, spheres, triangles, materials, start, final, intersect)) {
-			if (intersect.material_type == DIFFUSE_REFLECTION) {
+			if (intersect.material_type == DIFFUSE) {
 				float shadowing = processShadow(light, intersect);
-				result_color += tracing_ray.contribution * Phong(intersect, light, shadowing);
+				result_color += tracing_ray.contribution * getPhongPart(intersect, light, shadowing);
 			}
-			else if (intersect.material_type == MIRROR_REFLECTION){
+			else if (intersect.material_type == REFLECTION){
 				
 				float contribution;
 
 				contribution = tracing_ray.contribution * (1 - intersect.reflection_coef);
 				float shadowing = processShadow(light, intersect);
-				result_color += contribution * Phong(intersect, light, shadowing);
+				result_color += contribution * getPhongPart(intersect, light, shadowing);
 
 				vec3 reflect_direction = reflect(ray.direction, intersect.normal);
 					
 				contribution = tracing_ray.contribution * intersect.reflection_coef;
 				TracingRay reflectRay = TracingRay(Ray(intersect.point + reflect_direction * EPS, reflect_direction), contribution, tracing_ray.depth + 1);
 				pushRay(reflectRay);
-			} 
+			}
+			else if (intersect.material_type == REFRACTION) {
+				float contribution;
+
+				contribution = tracing_ray.contribution * (1.0 - intersect.refraction_coef);
+				float shadowing = processShadow(light, intersect);
+				result_color += contribution * getPhongPart(intersect, light, shadowing);
+
+				float eta = 1.0 / intersect.refractive_index;
+				vec3 refract_direction = refract(ray.direction, intersect.normal, eta);
+
+				if (length(refract_direction) > EPS) {
+					contribution = tracing_ray.contribution * intersect.refraction_coef;
+					TracingRay refractRay = TracingRay(
+						Ray(intersect.point + refract_direction * EPS, refract_direction),
+						contribution,
+						tracing_ray.depth + 1
+					);
+					pushRay(refractRay);
+				}
+			}
 		} 
 	} 
 	frag_color = vec4(result_color, 1.0);

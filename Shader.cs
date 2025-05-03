@@ -1,4 +1,6 @@
 ﻿using OpenTK.Graphics.OpenGL4;
+using System.Runtime.InteropServices;
+using OpenTK.Mathematics;
 
 namespace RayTracing {
     class Shader {
