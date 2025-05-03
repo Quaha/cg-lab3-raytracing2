@@ -1,15 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Net;
-using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using Game;
-using OpenTK.Audio.OpenAL;
-using OpenTK.Graphics.OpenGL4;
+﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -58,7 +47,9 @@ namespace RayTracing {
 
         protected override void OnResize(ResizeEventArgs e) {
 			base.OnResize(e);
-			GL.Viewport(0, 0, e.Width, e.Height);
+
+			GL.Viewport(0, 0, e.Width, e.Height); // Обновление размеров окна
+
 			this.width = e.Width;
 			this.height = e.Height;
 		}
@@ -110,9 +101,6 @@ namespace RayTracing {
             if (KeyboardState.IsKeyDown(Keys.Escape)) {
                 Close();
             }
-
-            GL.ClearColor(0.1f, 0.3f, 0.8f, 0.5f);
-			GL.Clear(ClearBufferMask.ColorBufferBit);
 
 			shader.useShader();
 			shader.setShaderData(width, height, camera);

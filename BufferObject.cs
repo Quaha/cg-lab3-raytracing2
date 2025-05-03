@@ -1,22 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL4;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Net;
-using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using OpenTK.Audio.OpenAL;
-using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
-
 namespace RayTracing {
     public enum BufferType {
         ArrayBuffer = BufferTarget.ArrayBuffer,
@@ -34,6 +18,7 @@ namespace RayTracing {
             buffer_handle = GL.GenBuffer();
         }
 
+        // Передача данных в буффер
         public void setData<T>(T[] data, BufferUsageHint hint) where T : struct {
             Bind();
 
@@ -45,6 +30,7 @@ namespace RayTracing {
             );
         }
 
+        // Привязка к VAO
         public void Bind() {
             if (!is_binded) {
                 is_binded = true;

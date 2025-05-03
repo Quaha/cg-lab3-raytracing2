@@ -1,21 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Net;
-using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using OpenTK.Audio.OpenAL;
-using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
-using OpenTK.Windowing.GraphicsLibraryFramework;
-
 namespace RayTracing {
     public class ArrayObject {
 
@@ -26,6 +10,7 @@ namespace RayTracing {
             vao_handle = GL.GenVertexArray();
         }
 
+        // Привязка к контексту
         public void Bind() {
             if (!is_binded) {
                 is_binded = true;
@@ -45,7 +30,7 @@ namespace RayTracing {
             GL.DeleteVertexArray(vao_handle);
         }
 
-        // Приклеплеие буфферов к VAO
+        // Привязка атрибутов вершин
         public void setVertexAttribPointer(int index,
                                            int size,
                                            VertexAttribPointerType type,

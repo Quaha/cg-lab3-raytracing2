@@ -1,36 +1,32 @@
 ﻿using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using RayTracing;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Game {
+namespace RayTracing {
     public class Camera {
 
-        public Vector3 position = Settings.BASE_CAMERA_POSITION;
+        Vector3 position = Settings.BASE_CAMERA_POSITION;
+            
+        Vector3 front_direction = -Vector3.UnitZ;
+        Vector3 up_direction = Vector3.UnitY;
+        Vector3 right_direction = Vector3.UnitX;
 
-        public Vector3 up_direction = Vector3.UnitY;
-        public Vector3 front_direction = -Vector3.UnitZ;
-        public Vector3 right_direction = Vector3.UnitX;
+        float FOV = Settings.BASE_CAMERA_FOV;
 
-        float SPEED = 10f;
-        float SENSITIVITY = 3f;
+        float SPEED = Settings.BASE_CAMERA_MOVEMENT_SPEED;
+        float SENSITIVITY = Settings.BASE_CAMERA_ROTATION_SENSITIVITY;
 
         float pitch = 0.0f; // degrees
         float yaw = 0.0f; // degrees
 
         Vector2 last_mouse_position = new Vector2(0, 0);
 
-        int SCREENWIDTH, SCREENHEIGHT;
+        int WINDOW_WIDTH, WINDOW_HEIGHT;
 
-        public Camera(int SCREENWIDTH, int SCREENHEIGHT) {
-            this.SCREENWIDTH = SCREENWIDTH;
-            this.SCREENHEIGHT = SCREENHEIGHT;
+        public Camera(int WINDOW_WIDTH, int WINDOW_HEIGHT) {
+            this.WINDOW_WIDTH = WINDOW_WIDTH;
+            this.WINDOW_HEIGHT = WINDOW_HEIGHT;
         }
 
         public Matrix4 getViewMatrix() {
@@ -40,7 +36,7 @@ namespace Game {
         public Matrix4 getProjection() {
             return Matrix4.CreatePerspectiveFieldOfView(
                 MathHelper.DegreesToRadians(60f),
-                SCREENWIDTH / SCREENHEIGHT,
+                WINDOW_WIDTH / WINDOW_HEIGHT,
                 0.1f,
                 100f
             );
@@ -108,24 +104,24 @@ namespace Game {
             inputProcessing(input, mouse, e);
         }
 
-        // Получение матрицы вида (переводит все координаты в координаты камеры)
-        public Matrix4 GetViewMatrix() {
-            return Matrix4.LookAt(position, position + front_direction, up_direction);
+        public Vector3 getPosition() {
+            return position;
         }
 
-        // Получение матрицы проекции (отвечает за перспективу)
-        public Matrix4 GetProjectionMatrix() {
-            return Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(45f), (float)SCREENWIDTH / SCREENHEIGHT, 0.1f, 100f);
+        public Vector3 getFront() {
+            return front_direction;
         }
 
-        // Получение матрицы модели (перемещение)
-        public Matrix4 GetModelMatrix(Vector3 translation) {
-            return Matrix4.CreateTranslation(translation);
+        public Vector3 getUp() {
+            return up_direction;
         }
 
-        public void UpdateProjection(int width, int height) {
-            SCREENWIDTH = width;
-            SCREENHEIGHT = height;
+        public Vector3 getRight() {
+            return right_direction;
+        }
+
+        public float getFOV() {
+            return FOV;
         }
     }
 }

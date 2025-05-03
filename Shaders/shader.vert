@@ -1,6 +1,6 @@
 ﻿#version 460 core
 
-in vec3 v_position;
+layout(location = 0) in vec3 v_position;
 out vec3 frag_position;
 
 void main() {

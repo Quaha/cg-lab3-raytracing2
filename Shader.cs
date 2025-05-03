@@ -1,6 +1,4 @@
-﻿using Game;
-using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
+﻿using OpenTK.Graphics.OpenGL4;
 
 namespace RayTracing {
     class Shader {
@@ -77,18 +75,13 @@ namespace RayTracing {
             GL.Uniform1(GL.GetUniformLocation(shader_handle, "WINDOW_HEIGHT"), height);
 
             GL.Uniform1(GL.GetUniformLocation(shader_handle, "ambient"), Settings.AMBIENT);
-            GL.Uniform1(GL.GetUniformLocation(shader_handle, "camera_FOV"), 90.0f);
 
+            GL.Uniform3(GL.GetUniformLocation(shader_handle, "camera_POS"), camera.getPosition());
+            GL.Uniform3(GL.GetUniformLocation(shader_handle, "camera_VIEW"), camera.getFront());
+            GL.Uniform3(GL.GetUniformLocation(shader_handle, "camera_UP"), camera.getUp());
+            GL.Uniform3(GL.GetUniformLocation(shader_handle, "camera_RIGHT"), camera.getRight());
 
-            int posLoc = GL.GetUniformLocation(shader_handle, "camera_POS");
-            int viewLoc = GL.GetUniformLocation(shader_handle, "camera_VIEW");
-            int upLoc = GL.GetUniformLocation(shader_handle, "camera_UP");
-            int rightLoc = GL.GetUniformLocation(shader_handle, "camera_RIGHT");
-
-            GL.Uniform3(posLoc, camera.position);
-            GL.Uniform3(viewLoc, camera.front_direction);
-            GL.Uniform3(upLoc, camera.up_direction);
-            GL.Uniform3(rightLoc, camera.right_direction);
+            GL.Uniform1(GL.GetUniformLocation(shader_handle, "camera_FOV"), camera.getFOV());
         }
 
         public void useShader() {
